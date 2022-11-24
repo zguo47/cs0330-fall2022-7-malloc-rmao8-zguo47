@@ -52,7 +52,7 @@ static inline long *block_end_tag(block_t *b) {
  */
 static inline int block_end_allocated(block_t *b) {
     // TODO: Implement this function!
-    return block_end_tag(b) & -2 & 1;
+    return *block_end_tag(b) & -2 & 1;
 }
 
 /*
@@ -128,7 +128,8 @@ static inline void block_set_allocated(block_t *b, int allocated) {
 static inline void block_set_size_and_allocated(block_t *b, long size,
                                                 int allocated) {
     // TODO: Implement this function
-    
+    block_set_size(b, size);
+    block_set_allocated(b, allocated);
 }
 
 /**
@@ -144,6 +145,7 @@ static inline void block_set_size_and_allocated(block_t *b, long size,
  */
 static inline long block_end_size(block_t *b) {
     // TODO: Implement this function!
+    return *block_end_tag(b) & -2;
 }
 
 /**
@@ -160,6 +162,7 @@ static inline long block_end_size(block_t *b) {
  */
 static inline long block_prev_size(block_t *b) {
     // TODO: Implement this function
+    return b->payload[-2] & -2;
 }
 
 /*
@@ -171,6 +174,7 @@ static inline long block_prev_size(block_t *b) {
  */
 static inline block_t *block_prev(block_t *b) {
     // TODO: Implement this function
+    return (block_t *)((char *)b - block_size(b));
 }
 
 /**
@@ -186,6 +190,7 @@ static inline block_t *block_prev(block_t *b) {
  */
 static inline block_t *block_next(block_t *b) {
     // TODO: Implement this function
+    return (block_t *)((char *)b + block_size(b));
 }
 
 /**
@@ -203,6 +208,7 @@ static inline block_t *block_next(block_t *b) {
  */
 static inline block_t *payload_to_block(void *payload) {
     // TODO: Implement this function
+    return (block_t *)payload;
 }
 
 /**
@@ -218,6 +224,7 @@ static inline block_t *payload_to_block(void *payload) {
  */
 static inline int block_next_allocated(block_t *b) {
     // TODO: Implement this function
+    return block_allocated(block_next(b));
 }
 
 /*
@@ -228,6 +235,7 @@ static inline int block_next_allocated(block_t *b) {
  */
 static inline long block_next_size(block_t *b) {
     // TODO: Implement this function
+    return block_size(block_next(b));
 }
 
 /**
@@ -244,6 +252,7 @@ static inline long block_next_size(block_t *b) {
  */
 static inline int block_prev_allocated(block_t *b) {
     // TODO: Implement this function
+    return block_allocated(block_prev(b));
 }
 
 /**
@@ -262,6 +271,7 @@ static inline int block_prev_allocated(block_t *b) {
 static inline block_t *block_blink(block_t *b) {
     assert(!block_allocated(b));
     // TODO: Implement this function
+    return (block_t *)b->payload[1];
 }
 
 /*
@@ -274,6 +284,7 @@ static inline block_t *block_blink(block_t *b) {
 static inline void block_set_blink(block_t *b, block_t *new_blink) {
     assert(!block_allocated(b) && !block_allocated(new_blink));
     // TODO: Implement this function
+    b->payload[1] = (size_t)new_blink;
 }
 
 /**
@@ -291,6 +302,7 @@ static inline void block_set_blink(block_t *b, block_t *new_blink) {
 static inline block_t *block_flink(block_t *b) {
     assert(!block_allocated(b));
     // TODO: Implement this function
+    return (block_t *)b->payload[0];
 }
 
 /*
@@ -304,6 +316,7 @@ static inline block_t *block_flink(block_t *b) {
 static inline void block_set_flink(block_t *b, block_t *new_flink) {
     assert(!block_allocated(b) && !block_allocated(new_flink));
     // TODO: Implement this function
+    b->payload[0] = (size_t)new_flink;
 }
 
 /**
@@ -324,6 +337,18 @@ static inline void block_set_flink(block_t *b, block_t *new_flink) {
 static inline void insert_free_block(block_t *fb) {
     assert(!block_allocated(fb));
     // TODO: Implement this function
+    if (flist_first != NULL){
+        block_t *last = block_blink(flist_first);
+        block_set_flink(fb, flist_first);
+        block_set_blink(fb, last);
+        block_set_flink(last, fb);
+        block_set_blink(flist_first, fb);
+    }else{
+        block_set_flink(fb, fb);
+        block_set_blink(fb, fb);
+    }
+    flist_first = fb;
+
 }
 
 /**
@@ -341,6 +366,18 @@ static inline void insert_free_block(block_t *fb) {
 static inline void pull_free_block(block_t *fb) {
     assert(!block_allocated(fb));
     // TODO: Implement this function
+    if (flist_first == fb && (block_blink(fb) != NULL || block_flink(fb) != NULL)){
+        block_t *last = block_blink(fb);
+        block_set_flink(last, block_flink(fb));
+        block_set_blink(block_flink(fb), last);
+        flist_first == block_flink(fb);
+    }else if (flist_first != NULL && flist_first != fb){
+        block_t *last = block_blink(fb);
+        block_set_flink(last, block_flink(fb));
+        block_set_blink(block_flink(fb), last);
+    }else{
+        flist_first = NULL;
+    }
 }
 
 /**
