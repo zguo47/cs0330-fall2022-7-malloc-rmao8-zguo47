@@ -25,6 +25,7 @@ extern block_t *epilogue;
  */
 static inline int block_allocated(block_t *b) { 
     // TODO: Implement this function!
+    return b->size & 1;
 }
 
 /*
@@ -38,6 +39,7 @@ static inline long *block_end_tag(block_t *b) {
     assert(b->size >= (WORD_SIZE * 2));
 
     // TODO: Implement this function!
+    return &b->payload[b->size/8 - 2];
 }
 
 /*
@@ -50,6 +52,7 @@ static inline long *block_end_tag(block_t *b) {
  */
 static inline int block_end_allocated(block_t *b) {
     // TODO: Implement this function!
+    return block_end_tag(b) & -2 & 1;
 }
 
 /*
@@ -68,6 +71,9 @@ static inline int block_end_allocated(block_t *b) {
 static inline void block_set_size(block_t *b, long size) {
     assert((size & (ALIGNMENT - 1)) == 0);
     // TODO: Implement this function
+    size |= block_allocated(b);
+    b->size = size;
+    *block_end_tag(b) = size;
 }
 
 /*
@@ -80,6 +86,7 @@ static inline void block_set_size(block_t *b, long size) {
  */
 static inline long block_size(block_t *b) { 
     // TODO: Implement this function!
+    return b->size & -2;
 }
 
 /**
@@ -97,6 +104,13 @@ static inline long block_size(block_t *b) {
 static inline void block_set_allocated(block_t *b, int allocated) {
     assert((allocated == 0) || (allocated == 1));
     // TODO: Implement this function
+    if (allocated){
+        b->size |= 1;
+        *block_end_tag(b) |= 1;
+    }else{
+        b->size &= -2;
+        *block_end_tag(b) &= -2;
+    }
 }
 
 /**
@@ -114,6 +128,7 @@ static inline void block_set_allocated(block_t *b, int allocated) {
 static inline void block_set_size_and_allocated(block_t *b, long size,
                                                 int allocated) {
     // TODO: Implement this function
+    
 }
 
 /**
