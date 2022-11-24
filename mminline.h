@@ -52,7 +52,7 @@ static inline long *block_end_tag(block_t *b) {
  */
 static inline int block_end_allocated(block_t *b) {
     // TODO: Implement this function!
-    return *block_end_tag(b) & -2 & 1;
+    return *block_end_tag(b) & 1;
 }
 
 /*
@@ -174,7 +174,7 @@ static inline long block_prev_size(block_t *b) {
  */
 static inline block_t *block_prev(block_t *b) {
     // TODO: Implement this function
-    return (block_t *)((char *)b - block_size(b));
+    return (block_t *)((char *)b - block_prev_size(b));
 }
 
 /**
@@ -208,7 +208,7 @@ static inline block_t *block_next(block_t *b) {
  */
 static inline block_t *payload_to_block(void *payload) {
     // TODO: Implement this function
-    return (block_t *)payload;
+    return (block_t *)((size_t *) payload - 1);
 }
 
 /**
@@ -366,18 +366,14 @@ static inline void insert_free_block(block_t *fb) {
 static inline void pull_free_block(block_t *fb) {
     assert(!block_allocated(fb));
     // TODO: Implement this function
-    if (flist_first == fb && (block_blink(fb) != NULL || block_flink(fb) != NULL)){
-        block_t *last = block_blink(fb);
-        block_set_flink(last, block_flink(fb));
-        block_set_blink(block_flink(fb), last);
-        flist_first == block_flink(fb);
-    }else if (flist_first != NULL && flist_first != fb){
-        block_t *last = block_blink(fb);
-        block_set_flink(last, block_flink(fb));
-        block_set_blink(block_flink(fb), last);
-    }else{
-        flist_first = NULL;
+    if (flist_first == fb) {
+    if ((flist_first = block_flink(fb)) == fb) {
+      flist_first = NULL;
+      return;
     }
+  }
+  block_set_flink(block_blink(fb), block_flink(fb));
+  block_set_blink(block_flink(fb), block_blink(fb));
 }
 
 /**
