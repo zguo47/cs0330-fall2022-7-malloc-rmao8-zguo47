@@ -28,6 +28,49 @@ static inline long align(long size) {
     return (((size) + (WORD_SIZE - 1)) & ~(WORD_SIZE - 1));
 }
 
+void coalescing(block_t *block) {
+    
+    block_t *next = block_next(block);
+    block_t *prev = block_prev(block);
+    long new_size;
+    
+    int prev_block_free = 0;
+    pull_free_block(block);
+
+    if (!block_allocated(prev)) {
+        
+        pull_free_block(prev);
+        new_size = block_size(prev) + block_size(block);
+        block_set_size_and_allocated(prev, new_size, 0);
+        prev_block_free = 1;
+    }
+    if (!block_allocated(next)) {
+        
+        if (prev_block_free == 1) {
+            pull_free_block(next);
+            new_size = block_size(next) + block_size(prev);
+            
+            block_set_size_and_allocated(prev, new_size, 0);
+            insert_free_block(prev);
+            return;
+
+        } else {
+            pull_free_block(next);
+            new_size = block_size(next) + block_size(block);
+            block_set_size_and_allocated(block, new_size, 0);
+            insert_free_block(block);
+            return;
+        }
+    }
+    
+    if (prev_block_free == 1) {
+        insert_free_block(prev);
+    } else {
+        insert_free_block(block);
+    }
+}
+
+
 /*
  *                             _       _ _
  *     _ __ ___  _ __ ___     (_)_ __ (_) |_
@@ -44,9 +87,11 @@ static inline long align(long size) {
 int mm_init(void) {
     
     if ((prologue = mem_sbrk(TAGS_SIZE)) == (void *) -1){
+        perror("prologue error");
         return -1;
     }
     if ((epilogue = mem_sbrk(TAGS_SIZE)) == (void *) -1){
+        perror("epilogue error");
         return -1;
     }
 
@@ -70,16 +115,17 @@ int mm_init(void) {
  */
 void *mm_malloc(long size) {
     // TODO
-    size_t b_size = align(size) + TAGS_SIZE;
+    long b_size = align(size) + TAGS_SIZE;
     if (size == 0 || b_size < MINBLOCKSIZE){
         return NULL;
     }
     block_t *curr_block = flist_first;
+
     while (curr_block != NULL){
         if (block_size(curr_block) >= b_size){
             pull_free_block(curr_block);
 
-            size_t free_size = block_size(curr_block) - b_size;
+            long free_size = block_size(curr_block) - b_size;
 
             if (free_size >= MINBLOCKSIZE) {
                 block_set_size_and_allocated(curr_block, b_size, 1);
@@ -93,10 +139,20 @@ void *mm_malloc(long size) {
 
         }else{
             curr_block = block_next(curr_block);
+            if (curr_block = flist_first) {
+                break;
+            }
         }
     }
     block_t *new_block = mem_sbrk(b_size);
+    if (new_block == (void *)-1) {
+        perror("mem_sbrk error");
+        return NULL;
+    }
+    new_block = epilogue;
     block_set_size_and_allocated(new_block, b_size, 1);
+    epilogue = block_next(new_block);
+    block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
     return new_block->payload;
 }
 
@@ -145,8 +201,8 @@ void *mm_realloc(void *ptr, long size) {
         return NULL;
     }else{
         block_t *original = payload_to_block(ptr);
-        size_t b_size = align(size) + TAGS_SIZE;
-        size_t old_size = block_size(original);
+        long b_size = align(size) + TAGS_SIZE;
+        long old_size = block_size(original);
         if (old_size >= b_size){
             block_set_size(original, b_size);
             return ptr;
@@ -171,46 +227,4 @@ void *mm_realloc(void *ptr, long size) {
 
     return NULL;
 
-}
-
-void coalescing(block_t *block) {
-    
-    block_t *next = block_next(block);
-    block_t *prev = block_prev(block);
-    size_t new_size;
-    
-    int prev_block_free = 0;
-    pull_free_block(block);
-
-    if (!block_allocated(prev)) {
-        
-        pull_free_block(prev);
-        new_size = block_size(prev) + block_size(block);
-        block_set_size_and_allocated(prev, new_size, 0);
-        prev_block_free = 1;
-    }
-    if (!block_allocated(next)) {
-        
-        if (prev_block_free == 1) {
-            pull_free_block(next);
-            new_size = block_size(next) + block_size(prev);
-            
-            block_set_size_and_allocated(prev, new_size, 0);
-            insert_free_block(prev);
-            return;
-
-        } else {
-            pull_free_block(next);
-            new_size = block_size(next) + block_size(block);
-            block_set_size_and_allocated(block, new_size, 0);
-            insert_free_block(block);
-            return;
-        }
-    }
-    
-    if (prev_block_free == 1) {
-        insert_free_block(prev);
-    } else {
-        insert_free_block(block);
-    }
 }
