@@ -41,7 +41,21 @@ static inline long align(long size) {
  * returns: 0, if successful
  *         -1, if an error occurs
  */
-int mm_init(void) { return -1; }
+int mm_init(void) {
+    
+    if ((prologue = mem_sbrk(TAGS_SIZE)) == (void *) -1){
+        return -1;
+    }
+    if ((epilogue = mem_sbrk(TAGS_SIZE)) == (void *) -1){
+        return -1;
+    }
+
+    block_set_size_and_allocated(prologue, TAGS_SIZE, 1);
+    block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
+
+    flist_first = NULL;
+    return 0;
+}
 
 /*     _ __ ___  _ __ ___      _ __ ___   __ _| | | ___   ___
  *    | '_ ` _ \| '_ ` _ \    | '_ ` _ \ / _` | | |/ _ \ / __|
@@ -56,8 +70,34 @@ int mm_init(void) { return -1; }
  */
 void *mm_malloc(long size) {
     // TODO
+    size_t b_size = align(size) + TAGS_SIZE;
+    if (size == 0 || b_size < MINBLOCKSIZE){
+        return NULL;
+    }
+    block_t *curr_block = flist_first;
+    while (curr_block != NULL){
+        if (block_size(curr_block) >= b_size){
+            pull_free_block(curr_block);
 
-    return NULL;
+            size_t free_size = block_size(curr_block) - b_size;
+
+            if (free_size >= MINBLOCKSIZE) {
+                block_set_size_and_allocated(curr_block, b_size, 1);
+                block_set_size_and_allocated(block_next(curr_block), free_size, 0);
+
+                insert_free_block(block_next(curr_block));
+            } else {
+                block_set_allocated(curr_block, 1);
+            }
+            return curr_block->payload;   
+
+        }else{
+            curr_block = block_next(curr_block);
+        }
+    }
+    block_t *new_block = mem_sbrk(b_size);
+    block_set_size_and_allocated(new_block, b_size, 1);
+    return new_block->payload;
 }
 
 /*                              __
@@ -73,6 +113,14 @@ void *mm_malloc(long size) {
  */
 void mm_free(void *ptr) {
     // TODO
+    if (ptr == NULL) {
+        return;
+    }
+    block_t *block = payload_to_block(ptr);
+    block_set_allocated(block, 0);
+    insert_free_block(block);
+    coalescing(block);
+    return;
 }
 
 /*
@@ -90,6 +138,79 @@ void mm_free(void *ptr) {
  */
 void *mm_realloc(void *ptr, long size) {
     // TODO
+    if (ptr == NULL){
+        mm_malloc(size);
+    }else if (size == 0){
+        mm_free(ptr);
+        return NULL;
+    }else{
+        block_t *original = payload_to_block(ptr);
+        size_t b_size = align(size) + TAGS_SIZE;
+        size_t old_size = block_size(original);
+        if (old_size >= b_size){
+            block_set_size(original, b_size);
+            return ptr;
+        }else{
+            // block *curr_block = original;
+            // while (block_next(curr_block) != NULL && block_next_allocated(curr_block) != 0){
+            //     old_size += block_next_size(curr_block);
+            // }
+            // if (old_size >= b_size){
+
+            // }else{
+
+            // }
+            void *newptr = mm_malloc(size);
+            if (newptr){
+                memcpy(newptr, ptr, old_size);
+                mm_free(ptr);
+            }
+            return newptr;
+        }
+    }
 
     return NULL;
+
+}
+
+void coalescing(block_t *block) {
+    
+    block_t *next = block_next(block);
+    block_t *prev = block_prev(block);
+    size_t new_size;
+    
+    int prev_block_free = 0;
+    pull_free_block(block);
+
+    if (!block_allocated(prev)) {
+        
+        pull_free_block(prev);
+        new_size = block_size(prev) + block_size(block);
+        block_set_size_and_allocated(prev, new_size, 0);
+        prev_block_free = 1;
+    }
+    if (!block_allocated(next)) {
+        
+        if (prev_block_free == 1) {
+            pull_free_block(next);
+            new_size = block_size(next) + block_size(prev);
+            
+            block_set_size_and_allocated(prev, new_size, 0);
+            insert_free_block(prev);
+            return;
+
+        } else {
+            pull_free_block(next);
+            new_size = block_size(next) + block_size(block);
+            block_set_size_and_allocated(block, new_size, 0);
+            insert_free_block(block);
+            return;
+        }
+    }
+    
+    if (prev_block_free == 1) {
+        insert_free_block(prev);
+    } else {
+        insert_free_block(block);
+    }
 }
