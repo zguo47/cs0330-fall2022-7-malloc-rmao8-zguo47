@@ -217,7 +217,7 @@ void *mm_realloc(void *ptr, long size) {
         }else{
             void *newptr = mm_malloc(size);
             if (newptr){
-                memcpy(newptr, ptr, old_size);
+                memmove(newptr, ptr, old_size - 2*TAGS_SIZE);
                 mm_free(ptr);
             }
             return newptr;
