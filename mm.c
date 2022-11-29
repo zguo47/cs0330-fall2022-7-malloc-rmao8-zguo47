@@ -215,10 +215,11 @@ void *mm_realloc(void *ptr, long size) {
             }
             return ptr;
         }else{
+            mm_free(ptr);
             void *newptr = mm_malloc(size);
             if (newptr){
                 memmove(newptr, ptr, old_size);
-                mm_free(ptr);
+                // mm_free(ptr);
             }
             return newptr;
         }
