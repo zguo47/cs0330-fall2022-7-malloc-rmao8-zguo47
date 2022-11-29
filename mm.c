@@ -231,27 +231,27 @@ void *mm_realloc(void *ptr, long size) {
                 return original->payload;
             }
         
-            else if ((!block_allocated(next)) && (old_size + block_size(next)) >= b_size) {
-                block_t *next = block_next(original);
-                pull_free_block(next);
-                block_set_size_and_allocated(
-                    original, old_size + block_size(next), 1);
-                return original->payload;
-            }
+            // else if ((!block_allocated(next)) && (old_size + block_size(next)) >= b_size) {
+            //     block_t *next = block_next(original);
+            //     pull_free_block(next);
+            //     block_set_size_and_allocated(
+            //         original, old_size + block_size(next), 1);
+            //     return original->payload;
+            // }
 
-            else if ((!block_allocated(prev)) && (!block_allocated(next)) && (old_size + block_size(prev) + block_size(next)) >=
-            b_size) {
+            // else if ((!block_allocated(prev)) && (!block_allocated(next)) && (old_size + block_size(prev) + block_size(next)) >=
+            // b_size) {
 
-                pull_free_block(next);
-                pull_free_block(prev);
-                block_set_size_and_allocated(
-                    prev, old_size + block_size(next) + block_size(prev),
-                    1);
+            //     pull_free_block(next);
+            //     pull_free_block(prev);
+            //     block_set_size_and_allocated(
+            //         prev, old_size + block_size(next) + block_size(prev),
+            //         1);
 
-                original = prev;
-                memmove(original->payload, ptr, old_size);
-                return original->payload;
-            }
+            //     original = prev;
+            //     memmove(original->payload, ptr, old_size);
+            //     return original->payload;
+            // }
         
            else {
             void *newptr = mm_malloc(b_size);
