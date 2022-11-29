@@ -207,17 +207,14 @@ void *mm_realloc(void *ptr, long size) {
         long old_size = block_size(original);
         if (old_size >= b_size){
             block_set_size(original, b_size);
+            size_t extra_size = old_size - b_size;
+            if (extra_size >= MINBLOCKSIZE){
+                block_set_size_and_allocated(block_next(original), extra_size, 0);
+                insert_free_block(block_next(original));
+                coalescing(block_next(original));
+            }
             return ptr;
         }else{
-            // block *curr_block = original;
-            // while (block_next(curr_block) != NULL && block_next_allocated(curr_block) != 0){
-            //     old_size += block_next_size(curr_block);
-            // }
-            // if (old_size >= b_size){
-
-            // }else{
-
-            // }
             void *newptr = mm_malloc(size);
             if (newptr){
                 memcpy(newptr, ptr, old_size);
