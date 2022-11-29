@@ -114,8 +114,11 @@ int mm_init(void) {
 void *mm_malloc(long size) {
     // TODO
     long b_size = align(size) + TAGS_SIZE;
-    if (size == 0 || b_size < MINBLOCKSIZE){
+    if (size == 0){
         return NULL;
+    }
+    if (b_size < MINBLOCKSIZE){
+        b_size = MINBLOCKSIZE;
     }
     block_t *curr_block = flist_first;
 
