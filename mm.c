@@ -139,7 +139,7 @@ void *mm_malloc(long size) {
 
         }else{
             curr_block = block_next(curr_block);
-            if (curr_block = flist_first) {
+            if (curr_block == flist_first) {
                 break;
             }
         }
