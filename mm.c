@@ -85,7 +85,7 @@ void coalescing(block_t *block) {
  *         -1, if an error occurs
  */
 int mm_init(void) {
-    
+    flist_first = NULL;
     if ((prologue = mem_sbrk(TAGS_SIZE)) == (void *) -1){
         perror("prologue error");
         return -1;
@@ -97,8 +97,6 @@ int mm_init(void) {
 
     block_set_size_and_allocated(prologue, TAGS_SIZE, 1);
     block_set_size_and_allocated(epilogue, TAGS_SIZE, 1);
-
-    flist_first = NULL;
     return 0;
 }
 
@@ -122,6 +120,7 @@ void *mm_malloc(long size) {
     block_t *curr_block = flist_first;
 
     while (curr_block != NULL){
+        
         if (block_size(curr_block) >= b_size){
             pull_free_block(curr_block);
 
@@ -138,10 +137,10 @@ void *mm_malloc(long size) {
             return curr_block->payload;   
 
         }else{
-            curr_block = block_next(curr_block);
-            if (curr_block = flist_first) {
-                break;
-            }
+                curr_block = block_flink(curr_block);
+                if (curr_block == flist_first) {
+                    break;
+                }
         }
     }
     block_t *new_block = mem_sbrk(b_size);
@@ -173,6 +172,9 @@ void mm_free(void *ptr) {
         return;
     }
     block_t *block = payload_to_block(ptr);
+    if (!block_allocated(block)) {
+        return;
+    }
     block_set_allocated(block, 0);
     insert_free_block(block);
     coalescing(block);
