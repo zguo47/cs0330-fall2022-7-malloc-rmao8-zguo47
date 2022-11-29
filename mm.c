@@ -209,21 +209,57 @@ void *mm_realloc(void *ptr, long size) {
         long b_size = align(size) + TAGS_SIZE;
         long old_size = block_size(original);
         if (old_size >= b_size){
-            block_set_size(original, b_size);
-            size_t extra_size = old_size - b_size;
+            long extra_size = old_size - b_size;
             if (extra_size >= MINBLOCKSIZE){
+                block_set_size(original, b_size);
                 block_set_size_and_allocated(block_next(original), extra_size, 0);
                 insert_free_block(block_next(original));
                 coalescing(block_next(original));
             }
             return ptr;
-        }else{
-            void *newptr = mm_malloc(size);
+        }
+        else{
+            block_t *next = block_next(original);
+            block_t *prev = block_prev(original);
+            if ((!block_allocated(prev)) && (old_size + block_size(prev)) >= b_size) {
+            
+                pull_free_block(prev);
+                block_set_size_and_allocated(
+                    prev, old_size + block_size(prev), 1);
+                original = prev;
+                memmove(original->payload, ptr, old_size);
+                return original->payload;
+            }
+        
+            else if ((!block_allocated(next)) && (old_size + block_size(next)) >= b_size) {
+                block_t *next = block_next(original);
+                pull_free_block(next);
+                block_set_size_and_allocated(
+                    original, old_size + block_size(next), 1);
+                return original->payload;
+            }
+
+            else if ((!block_allocated(prev)) && (!block_allocated(next)) && (old_size + block_size(prev) + block_size(next)) >=
+            b_size) {
+
+                pull_free_block(next);
+                pull_free_block(prev);
+                block_set_size_and_allocated(
+                    prev, old_size + block_size(next) + block_size(prev),
+                    1);
+
+                original = prev;
+                memmove(original->payload, ptr, old_size);
+                return original->payload;
+            }
+        
+           else {
+            void *newptr = mm_malloc(b_size);
             if (newptr){
                 memmove(newptr, ptr, old_size);
                 mm_free(ptr);
             }
-            return newptr;
+            return newptr;}
         }
     }
 
